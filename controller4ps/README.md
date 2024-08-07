@@ -1,6 +1,6 @@
-# controller4ps2
-Flashing controller4ps2.ino to Arduino, you can control swancolorHD with a Playstation(2) controller.  
-You can use it by connecting the "PS2 male controller connector" to the "SNES female controller connector" according to the [schematic](./controller4ps2_schematic.pdf).  
+# controller4ps
+Flashing controller4ps.ino to Arduino, you can control swancolorHD with a Playstation(2) controller.  
+You can use it by connecting the "PS2 male controller connector" to the "SNES female controller connector" according to the [schematic](./controller4ps_schematic.pdf).  
 <img src="./assets/wiring-001.png" alt="drawing" width="600"/>
 <img src="./assets/wiring-002.png" alt="drawing" width="600"/>
 
