@@ -3,7 +3,7 @@
 ## About
 This pcb for connecting to the swancolorHD pcb without soldering to the wonderswancolor pcb.  
 It has expansion terminal contacts and through-holes for header pins, it can be used to connect communication cables and WonderWitch.  
-Use 24pin 0.5mm pitch FFC (Type-B) for connection.  
+Use 24pin 0.5mm pitch FFC (Type-A) for connection.  
 When connecting with the original swancolorHD pcb, use a [conversion board](https://ja.aliexpress.com/item/1005007309969931.html).  
 
 When ordering from JLCPCB, please make the board thickness 1mm.  
