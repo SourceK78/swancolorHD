@@ -57,8 +57,7 @@ PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
 boolean haveController = false;
 
 // ps mode ?
-#define psMode   true
-//#define psMode   false
+boolean psMode = false;
 
 // bemani mode?
 uint8_t bemaniMode = 0;
@@ -72,6 +71,9 @@ uint8_t snesR2 = 0;
 
 const unsigned long PSMODE_POLLING_INTERVAL = 1000U / 120U;
 
+uint8_t buf[19];
+uint16_t ble_data = 0;
+
 byte psxButtonToIndex (PsxButtons psxButtons) {
   byte i;
 
@@ -84,6 +86,11 @@ byte psxButtonToIndex (PsxButtons psxButtons) {
   }
 
   return i;
+}
+
+uint16_t bytesToUint16LE(const uint8_t *bytes) {
+    return (uint16_t)bytes[0] |
+           ((uint16_t)bytes[1] << 8);
 }
 
 void dumpButtons (PsxButtons psxButtons, uint8_t *snesUP, uint8_t *snesDOWN, uint8_t *intBemaniUpDownPrev, uint8_t bemaniMode) {
@@ -290,6 +297,14 @@ void readController() {
     digitalWrite( SNESLATCH, 0 );
     delayMicroseconds( 6 );
 
+    // BLE
+    if ( Serial.available() ) {
+      Serial.readBytes(buf, 19);
+      ble_data = bytesToUint16LE(buf);
+      Serial.println(ble_data);
+    }
+
+
     // Shift in the controller data.
     // Logic 0 means pressed.
     for ( uint8_t i = 0; i < 16; ++i ) {
@@ -298,6 +313,10 @@ void readController() {
       // We only care about the first 15 bits.
       if ( i < 15 ) {
         uint8_t curDat = !digitalRead( SNESSERIAL );
+        // BLE
+        if ( ble_data != 0 ) {
+          curDat = (ble_data >> i) & 1;
+        }
         switch ( i ) {
           case 0:
             snesB = curDat;
@@ -530,7 +549,6 @@ void readController() {
   intBemaniComboPrev = intBemaniCombo;
 }
 
-
 // Drive WS controller signals.
 void updateWonderSignals() {
   // Get D0 and D1 values.
@@ -595,16 +613,59 @@ void setup() {
   digitalWrite( ARDCON, 0 );
   pinMode( ARDCON, INPUT );
 
-  if ( psMode ) {
-    delay(300);  //added delay to give wireless ps2 module some time to startup, before configuring it
-    Serial.println (F("ps mode ready!"));
-  } else {
-    // And the SNES controller pins.
-    pinMode( SNESLATCH, OUTPUT );
-    digitalWrite( SNESLATCH, 0 );
-    pinMode( SNESCLK, OUTPUT );
+  // swantroller check
+  // Hold swantroller buttons temporarily.
+  uint8_t snesUP = 0;
+  uint8_t snesDOWN = 0;
+
+  // swantroller pins.
+  pinMode( SNESLATCH, OUTPUT );
+  digitalWrite( SNESLATCH, 0 );
+  pinMode( SNESCLK, OUTPUT );
+  digitalWrite( SNESCLK, 1 );
+  pinMode( SNESSERIAL, INPUT_PULLUP );    
+
+  // Set the latch to high for 12 us.
+  digitalWrite( SNESLATCH, 1 );
+  delayMicroseconds( 12 );
+  digitalWrite( SNESLATCH, 0 );
+  delayMicroseconds( 6 );
+
+  // Shift in the controller data.
+  // Logic 0 means pressed.
+  for ( uint8_t i = 0; i < 16; ++i ) {
+    digitalWrite( SNESCLK, 0 );
+    delayMicroseconds( 6 );
+    // We only care about the first 15 bits.
+    if ( i < 15 ) {
+      uint8_t curDat = !digitalRead( SNESSERIAL );
+      // BLE
+      if ( ble_data != 0 ) {
+        curDat = (ble_data >> i) & 1;
+      }
+      switch ( i ) {
+        case 4:
+          // Up
+          snesUP = curDat;
+          break;
+        case 5:
+          // Down
+          snesDOWN = curDat;
+          break;
+        default:
+          break;
+      }
+    }
     digitalWrite( SNESCLK, 1 );
-    pinMode( SNESSERIAL, INPUT_PULLUP );    
+    delayMicroseconds( 6 );
+  }
+
+  if ( snesUP && snesDOWN ) {
+    Serial.println (F("swantroller mode ready!"));
+  } else {
+    delay(300);  //added delay to give wireless ps2 module some time to startup, before configuring it
+    psMode = true;
+    Serial.println (F("ps mode ready!"));
   }
 }
 
