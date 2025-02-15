@@ -71,6 +71,7 @@ uint8_t snesR2 = 0;
 
 const unsigned long PSMODE_POLLING_INTERVAL = 1000U / 120U;
 
+boolean enableSwantrollerBLE = false;
 uint8_t buf[19];
 uint16_t ble_data = 0;
 
@@ -303,7 +304,6 @@ void readController() {
       ble_data = bytesToUint16LE(buf);
       Serial.println(ble_data);
     }
-
 
     // Shift in the controller data.
     // Logic 0 means pressed.
@@ -578,7 +578,7 @@ void doComm() {
 
 void setup() {
   // DEBUG.
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println( "Startup" );
   
   // Set up pin modes.
@@ -613,6 +613,10 @@ void setup() {
   digitalWrite( ARDCON, 0 );
   pinMode( ARDCON, INPUT );
 
+  modeCheck();
+}
+
+void modeCheck() {
   // swantroller check
   // Hold swantroller buttons temporarily.
   uint8_t snesUP = 0;
@@ -630,6 +634,13 @@ void setup() {
   delayMicroseconds( 12 );
   digitalWrite( SNESLATCH, 0 );
   delayMicroseconds( 6 );
+
+  // BLE
+  if ( Serial.available() ) {
+    Serial.readBytes(buf, 19);
+    ble_data = bytesToUint16LE(buf);
+    Serial.println(ble_data);
+  }
 
   // Shift in the controller data.
   // Logic 0 means pressed.
@@ -662,14 +673,29 @@ void setup() {
 
   if ( snesUP && snesDOWN ) {
     Serial.println (F("swantroller mode ready!"));
+  } else if( enableSwantrollerBLE ) {
+    Serial.println (F("swantroller BLE mode ready!"));    
   } else {
     delay(300);  //added delay to give wireless ps2 module some time to startup, before configuring it
     psMode = true;
     Serial.println (F("ps mode ready!"));
-  }
+  } 
 }
 
 void loop() {
+
+  if ( Serial.available() && !enableSwantrollerBLE ) {
+    Serial.println (F("enable swantroller BLE!"));
+    enableSwantrollerBLE = true;
+    psMode = false;
+    modeCheck();
+  } else if ( !Serial.available() && enableSwantrollerBLE ) {
+    if ( !psMode ) {
+      Serial.println (F("disable swantroller BLE!"));
+      enableSwantrollerBLE = false;
+    }
+    modeCheck();
+  }
 
   readController();
 
